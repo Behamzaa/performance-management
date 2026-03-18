@@ -116,3 +116,14 @@ CREATE TABLE IF NOT EXISTS milestones (
 
 ALTER TABLE milestones ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Allow all on milestones" ON milestones FOR ALL USING (true) WITH CHECK (true);
+
+-- Hidden KPIs (user preference to hide specific KPIs from the board)
+CREATE TABLE IF NOT EXISTS hidden_kpis (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  kpi_id UUID NOT NULL REFERENCES kpis(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(kpi_id)
+);
+
+ALTER TABLE hidden_kpis ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow all on hidden_kpis" ON hidden_kpis FOR ALL USING (true) WITH CHECK (true);

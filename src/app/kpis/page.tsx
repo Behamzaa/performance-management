@@ -109,14 +109,21 @@ function KpisContent() {
 
   useEffect(() => {
     if (!isConfigured) { setLoading(false); return; }
-    getSupabase()
-      .from("kpis")
-      .select("*")
-      .order("sort_order")
-      .then(({ data }) => {
-        if (data) setKpis(data);
-        setLoading(false);
-      });
+
+    // Fetch KPIs and hidden KPIs in parallel
+    Promise.all([
+      getSupabase()
+        .from("kpis")
+        .select("*")
+        .order("sort_order"),
+      fetch("/api/hidden-kpis").then((res) => res.json()),
+    ]).then(([kpiResult, hiddenIds]) => {
+      if (kpiResult.data) setKpis(kpiResult.data);
+      if (Array.isArray(hiddenIds)) {
+        setHiddenKpis(new Set(hiddenIds));
+      }
+      setLoading(false);
+    });
   }, []);
 
   const owners = useMemo(() => {
@@ -131,8 +138,21 @@ function KpisContent() {
 
   const toggleHideKpi = useCallback((id: string) => {
     setHiddenKpis((prev) => {
+      const wasHidden = prev.has(id);
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
+      if (wasHidden) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+
+      // Persist to Supabase in the background
+      fetch("/api/hidden-kpis", {
+        method: wasHidden ? "DELETE" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ kpi_id: id }),
+      });
+
       return next;
     });
   }, []);
